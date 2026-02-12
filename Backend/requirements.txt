@@ -1,0 +1,13 @@
+langchain
+langchain-community
+langchain-core
+langchain-openai
+langchain-google-vertexai
+langchain-google-genai
+langgraph
+langgraph-supervisor
+streamlit
+langchain_experimental
+fastapi
+uvicorn
+python-dotenv
