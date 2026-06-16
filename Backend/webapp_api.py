@@ -21,10 +21,14 @@ load_dotenv()
 
 os.environ['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY', '')
 os.environ['GOOGLE_API_KEY'] = os.getenv('GOOGLE_API_KEY', '')
-os.environ['LANGSMITH_TRACING'] = 'true'
+
+# Only enable LangSmith tracing when an API key is actually configured;
+# otherwise every request emits noisy auth errors against an empty key.
+_langsmith_key = os.getenv('LANGSMITH_API_KEY', '')
+os.environ['LANGSMITH_TRACING'] = 'true' if _langsmith_key else 'false'
 os.environ['LANGSMITH_ENDPOINT'] = 'https://api.smith.langchain.com'
-os.environ['LANGSMITH_API_KEY'] = os.getenv('LANGSMITH_API_KEY', '')
-os.environ['LANGSMITH_PROJECT'] = 'Explainability'
+os.environ['LANGSMITH_API_KEY'] = _langsmith_key
+os.environ['LANGSMITH_PROJECT'] = os.getenv('LANGSMITH_PROJECT', 'Explainability')
 
 llm = ChatOpenAI(model='gpt-4o', temperature=0)
 gemini_2_5_flash = llm
@@ -56,9 +60,18 @@ class AgentResponse(BaseModel):
 
 app = FastAPI(title='RWA Explainability API', version='1.0.0')
 
+# Allowed browser origins, comma-separated, configurable per environment.
+# In the Docker setup the frontend talks to the backend via nginx on the SAME
+# origin (/api), so CORS is only relevant if the API is called cross-origin.
+_cors_origins = [
+    origin.strip()
+    for origin in os.getenv('CORS_ORIGINS', 'http://localhost:4200').split(',')
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:4200'],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -214,4 +227,6 @@ if __name__ == '__main__':
 
     host = os.getenv('API_HOST', '0.0.0.0')
     port = int(os.getenv('API_PORT', '8000'))
-    uvicorn.run('webapp_api:app', host=host, port=port, reload=True)
+    # Auto-reload is a development convenience only; keep it OFF in production.
+    reload = os.getenv('API_RELOAD', 'false').lower() in ('1', 'true', 'yes')
+    uvicorn.run('webapp_api:app', host=host, port=port, reload=reload)

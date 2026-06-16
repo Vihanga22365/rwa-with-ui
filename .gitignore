@@ -1,3 +1,6 @@
+# Deployment secrets (root .env consumed by docker compose)
+/.env
+
 # Backend
 # Python-generated files
 /Backend/__pycache__/
